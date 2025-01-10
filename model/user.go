@@ -23,6 +23,16 @@ func CreateUser(user *User) error {
 	return db.DB.Create(user).Error
 }
 
+func GetUserByUserId(userId uint64) (*User, error) {
+	user := &User{}
+	err := db.DB.Model(&User{}).Where("id = ?", userId).First(user).Error
+	if err != nil {
+		log.Printf("Error fetching user by user id: %v", err)
+		return nil, err
+	}
+	return user, nil
+}
+
 func GetUserCountByPhone(phoneNumber string) (int64, error) {
 	var cnt int64
 	err := db.DB.Model(&User{}).Where("phone_number = ?", phoneNumber).Count(&cnt).Error
@@ -36,5 +46,16 @@ func GetUserByPhoneAndPassword(phoneNumber, password string) (*User, error) {
 		log.Printf("Error fetching user by phone and password: %v", err)
 		return nil, err
 	}
+	return user, nil
+}
+
+func GetUserByPhone(phoneNumber string) (*User, error) {
+	user := &User{}
+	err := db.DB.Model(&User{}).Where("phone_number = ?", phoneNumber).First(user).Error
+	if err != nil {
+		log.Printf("Error fetching user by phone: %v", err)
+		return nil, err
+	}
+
 	return user, nil
 }

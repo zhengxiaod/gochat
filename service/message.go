@@ -44,7 +44,7 @@ func MessageList(c *gin.Context) {
 	pageIndex, _ := strconv.ParseInt(c.Query("page_index"), 10, 32)
 	pageSize, _ := strconv.ParseInt(c.Query("page_size"), 10, 32)
 	// 聊天记录查询
-	data, err := model.GetMessageListByGroupID(GroupId, int(pageSize), int(pageIndex))
+	data, err := model.GetMessageListByGroupID(GroupId, int(pageIndex), int(pageSize))
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code": -1,
