@@ -2,7 +2,6 @@ package model
 
 import (
 	"github.com/zhengxiaod/gochat/pkg/db"
-	"log"
 	"time"
 )
 
@@ -10,27 +9,13 @@ type User struct {
 	ID          uint64    `gorm:"primary_key;auto_increment;comment:'自增主键'" json:"id"`
 	PhoneNumber string    `gorm:"not null;unique;comment:'手机号'" json:"phone_number"`
 	Nickname    string    `gorm:"not null;comment:'昵称'" json:"nickname"`
-	Password    string    `gorm:"not null;comment:'密码'" json:"password"`
+	Password    string    `gorm:"not null;comment:'密码'" json:"-"`
 	CreateTime  time.Time `gorm:"not null;default:CURRENT_TIMESTAMP;comment:'创建时间'" json:"create_time"`
 	UpdateTime  time.Time `gorm:"not null;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;comment:'更新时间'" json:"update_time"`
 }
 
-func (User) TableName() string {
+func (*User) TableName() string {
 	return "user"
-}
-
-func CreateUser(user *User) error {
-	return db.DB.Create(user).Error
-}
-
-func GetUserByUserId(userId uint64) (*User, error) {
-	user := &User{}
-	err := db.DB.Model(&User{}).Where("id = ?", userId).First(user).Error
-	if err != nil {
-		log.Printf("Error fetching user by user id: %v", err)
-		return nil, err
-	}
-	return user, nil
 }
 
 func GetUserCountByPhone(phoneNumber string) (int64, error) {
@@ -39,23 +24,42 @@ func GetUserCountByPhone(phoneNumber string) (int64, error) {
 	return cnt, err
 }
 
-func GetUserByPhoneAndPassword(phoneNumber, password string) (*User, error) {
-	user := &User{}
-	err := db.DB.Model(&User{}).Where("phone_number = ? and password = ?", phoneNumber, password).First(user).Error
-	if err != nil {
-		log.Printf("Error fetching user by phone and password: %v", err)
-		return nil, err
-	}
-	return user, nil
+func CreateUser(user *User) error {
+	return db.DB.Create(user).Error
 }
 
-func GetUserByPhone(phoneNumber string) (*User, error) {
-	user := &User{}
-	err := db.DB.Model(&User{}).Where("phone_number = ?", phoneNumber).First(user).Error
-	if err != nil {
-		log.Printf("Error fetching user by phone: %v", err)
-		return nil, err
-	}
+func GetUserByPhoneAndPassword(phoneNumber, password string) (*User, error) {
+	user := new(User)
+	err := db.DB.Model(&User{}).Where("phone_number = ? and password = ?", phoneNumber, password).First(user).Error
+	return user, err
+}
 
-	return user, nil
+func GetUserById(id uint64) (*User, error) {
+	user := new(User)
+	err := db.DB.Model(&User{}).Where("id = ?", id).First(user).Error
+	return user, err
+}
+
+func GetUserIdByIds(ids []uint64) ([]uint64, error) {
+	var newIds []uint64
+	m := make(map[uint64]struct{}, len(ids))
+	for i := 0; i < len(ids); i += 1000 {
+		var tmp []uint64
+		end := i + 1000
+		if end > len(ids) {
+			end = len(ids)
+		}
+		subIds := ids[i:end]
+		err := db.DB.Model(&User{}).Where("id in (?)", subIds).Pluck("id", &tmp).Error
+		if err != nil {
+			return nil, err
+		}
+		for _, id := range tmp {
+			m[id] = struct{}{}
+		}
+	}
+	for id := range m {
+		newIds = append(newIds, id)
+	}
+	return newIds, nil
 }

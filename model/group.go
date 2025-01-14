@@ -1,8 +1,8 @@
 package model
 
 import (
-	"fmt"
 	"github.com/zhengxiaod/gochat/pkg/db"
+	"gorm.io/gorm"
 	"time"
 )
 
@@ -18,24 +18,20 @@ func (*Group) TableName() string {
 	return "group"
 }
 
-func CreateGroup(group *Group) error {
-	return db.DB.Create(group).Error
-}
+func CreateGroup(group *Group, ids []uint64) error {
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		err := tx.Create(group).Error
+		if err != nil {
+			return err
+		}
 
-func GetGroupByGroupName(user1, user2 uint64) (*Group, error) {
-	var group Group
-	name1 := fmt.Sprintf("%d_%d", user1, user2)
-	name2 := fmt.Sprintf("%d_%d", user2, user1)
-
-	err := db.DB.Where("name = ? OR name = ?", name1, name2).First(&group).Error
-	if err != nil {
-		fmt.Println("GetGroupByGroupName Error:", err)
-		return nil, err
-	}
-
-	return &group, nil
-}
-
-func DeleteGroupByID(id uint64) error {
-	return db.DB.Delete(&Group{}, id).Error
+		groupUsers := make([]*GroupUser, 0, len(ids))
+		for _, id := range ids {
+			groupUsers = append(groupUsers, &GroupUser{
+				GroupID: group.ID,
+				UserID:  id,
+			})
+		}
+		return tx.Create(groupUsers).Error
+	})
 }
