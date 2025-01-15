@@ -18,8 +18,13 @@ func main() {
 	// 初始化mysql数据库
 	db.InitMySQL()
 
-	e := router.HttpRouter()
-	e.Run(":8080")
+	go func() {
+		e := router.HttpRouter()
+		e.Run(":8080")
+	}()
+
+	r := router.WSRouter()
+	r.Run(":8081")
 
 	// 将gin框架的日志输出到log/gin.log文件中
 	//initLogFile()
