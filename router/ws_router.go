@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/zhengxiaod/gochat/service/ws"
+	"time"
 )
 
 var upgrader = websocket.Upgrader{}
@@ -22,6 +23,10 @@ func WSRouter() *gin.Engine {
 			fmt.Println("websocket conn err :", err)
 			return
 		}
+
+		// 开启心跳超时检测
+		checker := ws.NewHeartbeatChecker(time.Second*time.Duration(60), cm)
+		go checker.Start()
 
 		// 初始化连接
 		conn := ws.NewConnection(cm, WsConn)

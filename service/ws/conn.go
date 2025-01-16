@@ -6,22 +6,34 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/zhengxiaod/gochat/pkg/utils"
 	"sync"
+	"time"
 )
 
 type Conn struct {
-	ClientManager *ClientManager  // 当前连接属于哪个ClientManager
-	UserId        uint64          // 连接所属用户id
-	UserIdMutex   sync.RWMutex    // 保护 userId 的锁
-	Socket        *websocket.Conn // 用户连接
-	sendCh        chan []byte     // 用户要发送的数据
+	ClientManager    *ClientManager  // 当前连接属于哪个ClientManager
+	UserId           uint64          // 连接所属用户id
+	UserIdMutex      sync.RWMutex    // 保护 userId 的锁
+	Socket           *websocket.Conn // 用户连接
+	sendCh           chan []byte     // 用户要发送的数据
+	isClose          bool            // 连接状态
+	isCloseMutex     sync.RWMutex    // 保护 isClose 的锁
+	exitCh           chan struct{}   // 通知 writer 退出
+	maxClientId      uint64          // 该连接收到的最大 clientId，确保消息的可靠性
+	maxClientIdMutex sync.Mutex      // 保护 maxClientId 的锁
+
+	lastHeartBeatTime time.Time  // 最后活跃时间
+	heartMutex        sync.Mutex // 保护最后活跃时间的锁
 }
 
 func NewConnection(cm *ClientManager, wsConn *websocket.Conn) *Conn {
 	return &Conn{
-		ClientManager: cm,
-		UserId:        0, // 此时用户未登录， userID 为 0
-		Socket:        wsConn,
-		sendCh:        make(chan []byte, 10),
+		ClientManager:     cm,
+		UserId:            0, // 此时用户未登录， userID 为 0
+		Socket:            wsConn,
+		sendCh:            make(chan []byte, 10),
+		isClose:           false,
+		exitCh:            make(chan struct{}, 1),
+		lastHeartBeatTime: time.Now(), // 刚连接时初始化，避免正好遇到清理执行，如果连接没有后续操作，将会在下次被心跳检测踢出
 	}
 }
 
@@ -62,6 +74,8 @@ func (c *Conn) StartWriter() {
 				fmt.Println("Send Data error:, ", err, " Conn Writer exit")
 				return
 			}
+		case <-c.exitCh:
+			return
 		}
 	}
 }
@@ -126,4 +140,46 @@ func (c *Conn) SendMsg(userId uint64, bytes []byte) {
 	conn.sendCh <- bytes
 
 	return
+}
+
+// IsAlive 是否存活
+func (c *Conn) IsAlive() bool {
+	now := time.Now()
+
+	c.heartMutex.Lock()
+	c.isCloseMutex.RLock()
+	defer c.isCloseMutex.RUnlock()
+	defer c.heartMutex.Unlock()
+
+	if c.isClose || now.Sub(c.lastHeartBeatTime) > time.Duration(600)*time.Second {
+		return false
+	}
+	return true
+}
+
+func (c *Conn) Stop() {
+	c.isCloseMutex.Lock()
+	defer c.isCloseMutex.Unlock()
+
+	if c.isClose {
+		return
+	}
+
+	// 关闭 socket 连接
+	_ = c.Socket.Close()
+	// 关闭 writer
+	c.exitCh <- struct{}{}
+
+	if c.GetUserId() != 0 {
+		// 将连接从connMap中移除
+		c.ClientManager.RemoveConn(c.GetUserId())
+	}
+
+	c.isClose = true
+
+	// 关闭管道
+	close(c.exitCh)
+	close(c.sendCh)
+
+	fmt.Println("Conn Stop() ... UserId = ", c.GetUserId())
 }

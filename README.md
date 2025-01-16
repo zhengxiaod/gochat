@@ -185,8 +185,9 @@ docker run -d --name mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=123456 mysql
   ````
 
 # todo
-* 用户模块
-  * 通过手机号发送验证码实现用户注册，基于Redis实现验证码存储
 * 通讯模块
-  * websocket客户端读写分离，避免数据收发阻塞
-  * 通讯模块中请求参数包含groupid的均改为groupname，因为groupid不对外暴露
+  * 心跳检测
+  * websocket优雅退出
+  * 群聊功能
+  * 消息可靠性&有序性：超时重传 + 消息确认机制
+  * 在离线分离
