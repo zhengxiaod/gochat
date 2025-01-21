@@ -5,15 +5,18 @@ import (
 	"sync"
 )
 
+var ConnManager *ClientManager
+
 type ClientManager struct {
 	connMap  map[uint64]*Conn
 	connLock sync.RWMutex
 }
 
 func NewClientManager() *ClientManager {
-	return &ClientManager{
+	ConnManager = &ClientManager{
 		connMap: make(map[uint64]*Conn),
 	}
+	return ConnManager
 }
 
 // AddConn 添加连接
@@ -52,4 +55,23 @@ func (cm *ClientManager) RemoveConn(userId uint64) {
 	defer cm.connLock.Unlock()
 	delete(cm.connMap, userId)
 	fmt.Printf("connection UserId=%d remove from Server\n", userId)
+}
+
+// SendMessageAll 进行本地推送
+func (cm *ClientManager) SendMessageAll(userId2Msg map[uint64][]byte) {
+	var wg sync.WaitGroup
+	//ch := make(chan struct{}, 5) // 限制并发数
+	for userId, data := range userId2Msg {
+		//ch <- struct{}{}
+		wg.Add(1)
+		go func(userId uint64, data []byte) {
+			defer wg.Done()
+			conn := ConnManager.GetConn(userId)
+			if conn != nil {
+				conn.SendMsg(userId, data)
+			}
+		}(userId, data)
+	}
+	//close(ch)
+	wg.Wait()
 }

@@ -48,6 +48,8 @@ func (c *Conn) Start() {
 // StartReader 用于从客户端中读取数据
 func (c *Conn) StartReader() {
 	fmt.Println("[Reader Goroutine is running]")
+	defer fmt.Println(c.RemoteAddr(), "[conn Reader exit!]")
+	defer c.Stop()
 
 	for {
 		// 阻塞读
@@ -81,7 +83,7 @@ func (c *Conn) StartWriter() {
 }
 
 func (c *Conn) HandlerMessage(data []byte) {
-	UpMsg := new(utils.MessageStruct)
+	UpMsg := new(utils.InputMessageStruct)
 	err := json.Unmarshal(data, UpMsg)
 	if err != nil {
 		fmt.Println("json unmarshal error ", err)
@@ -106,10 +108,26 @@ func (c *Conn) HandlerMessage(data []byte) {
 		req.f = req.Login
 	case "Message":
 		req.f = req.SendMessage
+	case "Heartbeat":
+		req.f = req.Heartbeat
+	case "Sync":
+		req.f = req.Sync
 	}
+
+	// 更新心跳时间
+	c.KeepLive()
 
 	// 执行对应逻辑
 	go req.f()
+}
+
+// KeepLive 更新心跳
+func (c *Conn) KeepLive() {
+	now := time.Now()
+	c.heartMutex.Lock()
+	defer c.heartMutex.Unlock()
+
+	c.lastHeartBeatTime = now
 }
 
 // GetUserId 获取 userId
@@ -182,4 +200,21 @@ func (c *Conn) Stop() {
 	close(c.sendCh)
 
 	fmt.Println("Conn Stop() ... UserId = ", c.GetUserId())
+}
+
+// RemoteAddr 获取远程客户端地址
+func (c *Conn) RemoteAddr() string {
+	return c.Socket.RemoteAddr().String()
+}
+
+func (c *Conn) CompareAndIncrClientID(newMaxClientId uint64) bool {
+	c.maxClientIdMutex.Lock()
+	defer c.maxClientIdMutex.Unlock()
+
+	fmt.Println("收到的 newMaxClientId 是：", newMaxClientId, "此时 c.maxClientId 是：", c.maxClientId)
+	if c.maxClientId+1 == newMaxClientId {
+		c.maxClientId++
+		return true
+	}
+	return false
 }

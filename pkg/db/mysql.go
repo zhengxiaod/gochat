@@ -11,7 +11,7 @@ import (
 
 var DB *gorm.DB
 
-type Config struct {
+type MySQLClient struct {
 	MySQL MySQLConfig `mapstructure:"mysql" yaml:"mysql"`
 }
 
@@ -26,7 +26,7 @@ type MySQLConfig struct {
 func InitMySQL() {
 	var err error
 	// 解析配置文件
-	var config Config
+	var config MySQLClient
 	if err := viper.Unmarshal(&config); err != nil {
 		log.Fatalf("Unable to decode into struct: %v", err)
 	}

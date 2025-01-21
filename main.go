@@ -15,8 +15,9 @@ func main() {
 	// 读取config/app.yaml文件配置
 	initConfig()
 
-	// 初始化mysql数据库
+	// 初始化数据库
 	db.InitMySQL()
+	db.InitRedis()
 
 	go func() {
 		e := router.HttpRouter()

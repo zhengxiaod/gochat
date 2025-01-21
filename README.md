@@ -14,6 +14,8 @@ dockerdocker 安装 MySQL
 ````
 # MySQL 
 docker run -d --name mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=123456 mysql
+# Redis
+docker run -d --name redis -p 6379:6379 redis
 ````
 
 1.连接 MySQL，创建 gochat 库

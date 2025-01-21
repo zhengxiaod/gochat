@@ -2,9 +2,13 @@ package model
 
 import (
 	"github.com/zhengxiaod/gochat/pkg/db"
+	"github.com/zhengxiaod/gochat/pkg/utils"
 	"time"
 )
 
+const MessageLimit = 50 // 最大消息同步数量
+
+// Message 单聊消息
 type Message struct {
 	ID          uint64    `gorm:"primary_key;auto_increment;comment:'自增主键'" json:"id"`
 	UserID      uint64    `gorm:"not null;comment:'用户id，指接受者用户id'" json:"user_id"`
@@ -13,6 +17,8 @@ type Message struct {
 	ReceiverId  uint64    `gorm:"not null;comment:'接收者id，群聊id/用户id'" json:"receiver_id"`
 	MessageType int8      `gorm:"not null;comment:'消息类型,语言、文字、图片'" json:"message_type"`
 	Content     []byte    `gorm:"not null;comment:'消息内容'" json:"content"`
+	Seq         uint64    `gorm:"not null;comment:'消息序列号'" json:"seq"`
+	SendTime    time.Time `gorm:"not null;default:CURRENT_TIMESTAMP;comment:'消息发送时间'" json:"send_time"`
 	CreateTime  time.Time `gorm:"not null;default:CURRENT_TIMESTAMP;comment:'创建时间'" json:"create_time"`
 	UpdateTime  time.Time `gorm:"not null;default:CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;comment:'更新时间'" json:"update_time"`
 }
@@ -21,18 +27,56 @@ func (Message) TableName() string {
 	return "message"
 }
 
-func CreateMessage(message *Message) error {
-	return db.DB.Create(message).Error
+func CreateMessage(msgs ...*Message) error {
+	return db.DB.Create(msgs).Error
 }
 
-func GetMessageListByGroupID(groupID uint64, pageIndex, pageSize int) ([]*Message, error) {
-	skip := (pageIndex - 1) * pageSize
-	var messages []*Message
-	// 修改 SQL 查询以支持分页和排序
-	err := db.DB.Where("group_id = ?", groupID).
-		Order("create_time DESC"). // 按照 CreateTime 降序排序
-		Offset(skip).              // 设置偏移量
-		Limit(pageSize).           // 设置限制条数
-		Find(&messages).Error
-	return messages, err
+func ListByUserIdAndSeq(userId, seq uint64, limit int) ([]Message, bool, error) {
+	var cnt int64
+	err := db.DB.Model(&Message{}).Where("user_id = ? and seq > ?", userId, seq).
+		Count(&cnt).Error
+	if err != nil {
+		return nil, false, err
+	}
+	if cnt == 0 {
+		return nil, false, nil
+	}
+
+	var messages []Message
+	err = db.DB.Model(&Message{}).Where("user_id = ? and seq > ?", userId, seq).
+		Limit(limit).Order("seq ASC").Find(&messages).Error
+	if err != nil {
+		return nil, false, err
+	}
+	return messages, cnt > int64(limit), nil
 }
+
+func MessagesToJson(messages []Message) []utils.MessageStruct {
+	jsonMessages := make([]utils.MessageStruct, 0, len(messages))
+	for _, message := range messages {
+		jsonMessages = append(jsonMessages, utils.MessageStruct{
+			SeqId:       message.Seq,
+			SenderId:    message.SenderID,
+			SessionType: message.SessionType,
+			ReceiverId:  message.ReceiverId,
+			Content:     string(message.Content),
+			SendTime:    message.SendTime.Unix(),
+		})
+	}
+	return jsonMessages
+}
+
+//func MessagesToPB(messages []Message) []*pb.Message {
+//	pbMessages := make([]*pb.Message, 0, len(messages))
+//	for _, message := range messages {
+//		pbMessages = append(pbMessages, &pb.Message{
+//			SessionType: pb.SessionType(message.SessionType),
+//			ReceiverId:  message.ReceiverId,
+//			SenderId:    message.SenderID,
+//			MessageType: pb.MessageType(message.MessageType),
+//			Content:     message.Content,
+//			Seq:         message.Seq,
+//		})
+//	}
+//	return pbMessages
+//}
