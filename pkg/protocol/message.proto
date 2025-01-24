@@ -1,0 +1,51 @@
+syntax = "proto3";
+package protocol;
+option go_package = "pkg/protocol";
+
+// 输入消息结构体
+message InputMessageStruct {
+  string cmd = 1; // 命令
+  bytes content = 2; // 内容，使用 bytes 类型以便于处理 JSON RawMessage
+}
+
+// 登录内容结构体
+message LoginStruct {
+  string token = 1; // 登录令牌
+}
+
+// 同步离线消息内容结构体
+message SyncStruct {
+  uint64 seq_id = 1; // 消息序列 ID
+}
+
+// 正常发送消息内容结构体
+message MessageStruct {
+  uint64 seq_id = 1; // 消息序列 ID
+  uint64 sender_id = 2; // 发送者 ID
+  uint64 client_id = 3; // 客户端 ID
+  int32 session_type = 4; // 会话类型
+  uint64 receiver_id = 5; // 接收者 ID（单聊接收者 ID 或群聊 group ID）
+  string content = 6; // 消息内容
+  int64 send_time = 7; // 发送时间
+}
+
+// 输出消息结构体
+message OutputMessageStruct {
+  string cmd = 1; // 命令
+  int32 code = 2; // 状态码
+  string code_msg = 3; // 状态信息
+  bytes content = 4; // 内容
+}
+
+// 确认消息结构体
+message AckMsgStruct {
+  string ack_type = 1; // 确认类型
+  uint64 seq_id = 2; // 消息序列 ID
+  uint64 client_id = 3; // 客户端 ID
+}
+
+// 输出同步消息结构体
+message OutputSyncMsgStruct {
+  repeated MessageStruct content = 1; // 消息内容列表
+  bool has_more = 2; // 是否还有更多消息
+}

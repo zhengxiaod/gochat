@@ -23,7 +23,7 @@ func NewHeartbeatChecker(interval time.Duration, cm *ClientManager) *HeartbeatCh
 
 // Start 启动心跳检测
 func (h *HeartbeatChecker) Start() {
-	fmt.Println("HeartbeatChecker Start ... ")
+	//fmt.Println("HeartbeatChecker Start ... ")
 
 	ticker := time.NewTicker(h.interval)
 	for {

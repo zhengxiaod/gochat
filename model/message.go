@@ -2,6 +2,7 @@ package model
 
 import (
 	"github.com/zhengxiaod/gochat/pkg/db"
+	"github.com/zhengxiaod/gochat/pkg/protocol/pb"
 	"github.com/zhengxiaod/gochat/pkg/utils"
 	"time"
 )
@@ -66,17 +67,17 @@ func MessagesToJson(messages []Message) []utils.MessageStruct {
 	return jsonMessages
 }
 
-//func MessagesToPB(messages []Message) []*pb.Message {
-//	pbMessages := make([]*pb.Message, 0, len(messages))
-//	for _, message := range messages {
-//		pbMessages = append(pbMessages, &pb.Message{
-//			SessionType: pb.SessionType(message.SessionType),
-//			ReceiverId:  message.ReceiverId,
-//			SenderId:    message.SenderID,
-//			MessageType: pb.MessageType(message.MessageType),
-//			Content:     message.Content,
-//			Seq:         message.Seq,
-//		})
-//	}
-//	return pbMessages
-//}
+func MessagesToPB(messages []Message) []*pb.Message {
+	pbMessages := make([]*pb.Message, 0, len(messages))
+	for _, message := range messages {
+		pbMessages = append(pbMessages, &pb.Message{
+			SessionType: pb.SessionType(message.SessionType),
+			ReceiverId:  message.ReceiverId,
+			SenderId:    message.SenderID,
+			MessageType: pb.MessageType(message.MessageType),
+			Content:     message.Content,
+			Seq:         message.Seq,
+		})
+	}
+	return pbMessages
+}

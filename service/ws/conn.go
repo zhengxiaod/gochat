@@ -3,7 +3,9 @@ package ws
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
+	"github.com/zhengxiaod/gochat/pkg/protocol/pb"
 	"github.com/zhengxiaod/gochat/pkg/utils"
 	"sync"
 	"time"
@@ -59,8 +61,11 @@ func (c *Conn) StartReader() {
 			return
 		}
 
-		// 消息处理
-		c.HandlerMessage(data)
+		//// 消息处理Json
+		//c.HandlerMessage(data)
+
+		// 消息处理PB
+		c.HandlerMessageInPB(data)
 	}
 }
 
@@ -72,7 +77,8 @@ func (c *Conn) StartWriter() {
 	for {
 		select {
 		case data := <-c.sendCh:
-			if err = c.Socket.WriteMessage(websocket.TextMessage, data); err != nil {
+			fmt.Println("send msg data = ", string(data))
+			if err = c.Socket.WriteMessage(websocket.BinaryMessage, data); err != nil {
 				fmt.Println("Send Data error:, ", err, " Conn Writer exit")
 				return
 			}
@@ -121,6 +127,56 @@ func (c *Conn) HandlerMessage(data []byte) {
 	go req.f()
 }
 
+// HandlerMessage 消息处理
+func (c *Conn) HandlerMessageInPB(bytes []byte) {
+	// TODO 所有错误都需要写回给客户端
+	// 消息解析 proto string -> struct
+	input := new(pb.Input)
+	err := proto.Unmarshal(bytes, input)
+	if err != nil {
+		fmt.Println("unmarshal error", err)
+		return
+	}
+	//fmt.Println("收到消息：", input)
+
+	// 对未登录用户进行拦截
+	if input.Type != pb.CmdType_CT_Login && c.GetUserId() == 0 {
+		return
+	}
+
+	req := &Req{
+		conn: c,
+		data: input.Data,
+		f:    nil,
+	}
+
+	switch input.Type {
+	case pb.CmdType_CT_Login: // 登录
+		req.f = req.LoginInPB
+	case pb.CmdType_CT_Heartbeat: // 心跳
+		req.f = req.Heartbeat
+	case pb.CmdType_CT_Message: // 上行消息
+		req.f = req.SendMessageInPB
+	case pb.CmdType_CT_ACK: // ACK TODO
+
+	case pb.CmdType_CT_Sync: // 离线消息同步
+		req.f = req.SyncInPB
+	default:
+		fmt.Println("未知消息类型")
+	}
+
+	if req.f == nil {
+		return
+	}
+
+	// 更新心跳时间
+	c.KeepLive()
+
+	// 执行对应逻辑
+	go req.f()
+
+}
+
 // KeepLive 更新心跳
 func (c *Conn) KeepLive() {
 	now := time.Now()
@@ -148,11 +204,23 @@ func (c *Conn) SetUserId(userId uint64) {
 
 // SendMsg 根据 userId 给相应 socket 发送消息
 func (c *Conn) SendMsg(userId uint64, bytes []byte) {
+
+	c.isCloseMutex.RLock()
+	defer c.isCloseMutex.RUnlock()
+
+	// 已关闭
+	if c.isClose {
+		fmt.Println("connection closed when send msg")
+		return
+	}
+
 	// 根据 userId 找到对应 socket
 	conn := c.ClientManager.GetConn(userId)
 	if conn == nil {
 		return
 	}
+
+	//fmt.Println("send msg to userId = ", userId)
 
 	// 发送
 	conn.sendCh <- bytes

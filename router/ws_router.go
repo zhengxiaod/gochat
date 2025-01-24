@@ -2,6 +2,7 @@ package router
 
 import (
 	"fmt"
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/zhengxiaod/gochat/service/ws"
@@ -16,6 +17,8 @@ func WSRouter() *gin.Engine {
 
 	r := gin.Default()
 
+	pprof.Register(r)
+
 	r.GET("/ws", func(c *gin.Context) {
 		// 升级协议  http -> websocket
 		WsConn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
@@ -25,7 +28,7 @@ func WSRouter() *gin.Engine {
 		}
 
 		// 开启心跳超时检测
-		checker := ws.NewHeartbeatChecker(time.Second*time.Duration(60), cm)
+		checker := ws.NewHeartbeatChecker(time.Second*time.Duration(5*60), cm)
 		go checker.Start()
 
 		// 初始化连接
