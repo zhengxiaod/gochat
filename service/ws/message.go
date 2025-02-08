@@ -120,7 +120,7 @@ func SendToUserInPB(msg *pb.Message, userId uint64) (uint64, error) {
 
 	// 消息落库
 	message := &model.Message{
-		UserID:      msg.ReceiverId,
+		UserID:      userId,
 		SenderID:    msg.SenderId,
 		SessionType: 1,
 		ReceiverId:  msg.ReceiverId,
