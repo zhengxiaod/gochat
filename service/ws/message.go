@@ -8,6 +8,7 @@ import (
 	"github.com/zhengxiaod/gochat/model"
 	"github.com/zhengxiaod/gochat/pkg/protocol/pb"
 	"github.com/zhengxiaod/gochat/pkg/utils"
+	"github.com/zhengxiaod/gochat/service"
 	"log"
 	"time"
 )
@@ -261,7 +262,8 @@ func SendToGroup(msg *utils.MessageStruct) error {
 // SendToGroupInPB 发送消息到群
 func SendToGroupInPB(msg *pb.Message) error {
 	// 获取群成员信息
-	userIds, err := model.GetGroupUserIdsByGroupId(msg.ReceiverId)
+	userIds, err := service.GetGroupUser(msg.ReceiverId)
+	//userIds, err := model.GetGroupUserIdsByGroupId(msg.ReceiverId)
 	if err != nil {
 		fmt.Println("[群聊消息处理] 查询失败，err:", err, msg)
 		return err

@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/zhengxiaod/gochat/lib/cache"
 	"github.com/zhengxiaod/gochat/model"
 	"github.com/zhengxiaod/gochat/pkg/utils"
 	"net/http"
@@ -59,4 +60,27 @@ func GroupUserList(c *gin.Context) {
 			"ids": idsStr,
 		},
 	})
+}
+
+// GetGroupUser 获取群成员
+// 从缓存中获取，如果缓存中没有，获取后加入缓存
+func GetGroupUser(groupId uint64) ([]uint64, error) {
+	userIds, err := cache.GetGroupUser(groupId)
+	if err != nil {
+		return nil, err
+	}
+	if len(userIds) != 0 {
+		return userIds, nil
+	}
+
+	userIds, err = model.GetGroupUserIdsByGroupId(groupId)
+	if err != nil {
+		return nil, err
+	}
+	err = cache.SetGroupUser(groupId, userIds)
+	if err != nil {
+		return nil, err
+	}
+
+	return userIds, nil
 }

@@ -47,16 +47,50 @@ func NewClient(userId, token, host string) *Client {
 	}
 	c.conn = conn
 	// 向 websocket 发送登录请求
+	c.Login()
+
+	// 心跳
+	go c.Heartbeat()
+
+	// 写
+	go c.write()
+
+	// 读
+	go c.read()
+
+	return c
+}
+
+func NewClientInPB(userId, token, host string) *Client {
+	// 创建 client
+	c := &Client{
+		clientId2Cancel: make(map[uint64]context.CancelFunc),
+		token:           token,
+		userId:          utils.StrToUint64(userId),
+		sendCh:          make(chan []byte, 1024),
+	}
+
+	// 连接 websocket
+	conn, _, err := websocket.DefaultDialer.Dial(host+"/ws", http.Header{})
+	if err != nil {
+		panic(err)
+	}
+	c.conn = conn
+	// 向 websocket 发送登录请求
 	c.LoginInPB()
+
+	//c.Login()
 
 	// 心跳
 	go c.HeartbeatInPB()
+	//go c.Heartbeat()
 
 	// 写
 	go c.write()
 
 	// 读
 	go c.readInPB()
+	//go c.read()
 
 	return c
 }

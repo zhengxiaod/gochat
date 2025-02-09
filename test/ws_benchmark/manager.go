@@ -283,7 +283,8 @@ func (m *Manager) batchCreate() {
 			userId := m.userIds[i]
 			token := m.tokens[i]
 
-			client := NewClient(userId, token, websocketAddr)
+			// client := NewClient(userId, token, websocketAddr)
+			client := NewClientInPB(userId, token, websocketAddr)
 			if client.conn != nil {
 				m.clients.Store(userId, client)
 			}
@@ -355,6 +356,7 @@ func (m *Manager) loopSend() {
 				}
 				// 发送信息
 				client.(*Client).sendInPB(m.chatId)
+				//client.(*Client).send(m.chatId)
 			}
 			count++
 			if count >= m.TestCount {
