@@ -1,6 +1,8 @@
 package model
 
 import (
+	"fmt"
+	"github.com/golang/protobuf/proto"
 	"github.com/zhengxiaod/gochat/pkg/db"
 	"github.com/zhengxiaod/gochat/pkg/protocol/pb"
 	"github.com/zhengxiaod/gochat/pkg/utils"
@@ -80,4 +82,28 @@ func MessagesToPB(messages []Message) []*pb.Message {
 		})
 	}
 	return pbMessages
+}
+
+func ProtoMarshalToMessage(data []byte) []*Message {
+	var messages []*Message
+	mqMessages := &pb.MQMessages{}
+	err := proto.Unmarshal(data, mqMessages)
+	if err != nil {
+		fmt.Println("json.Unmarshal(mqMessages) 失败,err:", err)
+		return nil
+	}
+	for _, mqMessage := range mqMessages.Messages {
+		message := &Message{
+			UserID:      mqMessage.UserId,
+			SenderID:    mqMessage.SenderId,
+			SessionType: int8(mqMessage.SessionType),
+			ReceiverId:  mqMessage.ReceiverId,
+			MessageType: int8(mqMessage.MessageType),
+			Content:     mqMessage.Content,
+			Seq:         mqMessage.Seq,
+			SendTime:    mqMessage.SendTime.AsTime(),
+		}
+		messages = append(messages, message)
+	}
+	return messages
 }

@@ -7,15 +7,18 @@ go get -u gorm.io/gorm
 go get -u gorm.io/driver/mysql
 go get -u github.com/golang-jwt/jwt/v4
 go get github.com/gorilla/websocket
+go get github.com/wagslane/go-rabbitmq
 ````
 ## 项目启动
-dockerdocker 安装 MySQL
+docker 安装 MySQL、Redis、RabbitMQ
 
 ````
 # MySQL 
 docker run -d --name mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=123456 mysql
 # Redis
 docker run -d --name redis -p 6379:6379 redis
+# RabbitMQ
+docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:management-alpine
 ````
 
 1.连接 MySQL，创建 gochat 库

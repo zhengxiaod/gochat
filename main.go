@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
+	"github.com/zhengxiaod/gochat/lib/mq"
 	"github.com/zhengxiaod/gochat/pkg/db"
 	"github.com/zhengxiaod/gochat/router"
 	"io"
@@ -18,6 +19,7 @@ func main() {
 	// 初始化数据库
 	db.InitMySQL()
 	db.InitRedis()
+	mq.InitMessageMQ("amqp://guest:guest@localhost:5672/")
 
 	go func() {
 		e := router.HttpRouter()
